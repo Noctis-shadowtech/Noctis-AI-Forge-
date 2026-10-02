@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noctis AI Forge - Literary AI</title>
+<style>
+  :root{
+    --crimson:#dc143c;
+    --crimson-deep:#8b0d24;
+    --crimson-soft:rgba(220,20,60,.16);
+    --border:rgba(220,20,60,.28);
+    --text:#fbeef1;
+    --muted:#d9a7b3;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    background:#1a0206;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    background:
+      radial-gradient(1100px 720px at 12% -12%, rgba(220,20,60,.44), transparent 62%),
+      radial-gradient(950px 720px at 108% 112%, rgba(139,0,0,.52), transparent 62%),
+      linear-gradient(155deg,#2a0409 0%,#43060f 48%,#160105 100%);
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input,select,textarea{font:inherit;color:inherit}
+
+  .app{
+    display:flex;
+    height:100vh;
+    height:100dvh;
+    width:100%;
+    overflow:hidden;
+  }
+
+  .sidebar{
+    width:288px;
+    flex:0 0 288px;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    background:linear-gradient(180deg, rgba(40,4,12,.86), rgba(20,2,6,.9));
+    border-right:1px solid var(--border);
+    backdrop-filter:blur(16px);
+    z-index:40;
+  }
+  .sidebar-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:16px 16px 12px;
+    border-bottom:1px solid rgba(220,20,60,.16);
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:17px;
+    letter-spacing:.4px;
+    color:#ffd9e1;
+  }
+  .brand-mark{
+    width:26px;height:26px;
+    flex:0 0 26px;
+    border-radius:8px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,#dc143c,#7d0a1f);
+    color:#fff;
+    font-size:13px;
+    box-shadow:0 4px 14px rgba(220,20,60,.45);
+  }
+  .sidebar-new{padding:14px 14px 6px}
+  .new-chat{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:11px 14px;
+    border-radius:12px;
+    background:linear-gradient(135deg, rgba(220,20,60,.95), rgba(139,13,36,.95));
+    color:#fff;
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:.2px;
+    box-shadow:0 8px 22px rgba(220,20,60,.28);
+    transition:transform .16s ease, box-shadow .16s ease;
+  }
+  .new-chat:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(220,20,60,.4)}
+  .history-label{
+    padding:14px 20px 8px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1.4px;
+    color:var(--muted);
+  }
+  .history-list{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:0 6px 12px;
+  }
+  .empty-history{
+    padding:18px 16px;
+    font-size:13px;
+    color:rgba(217,167,179,.7);
+    text-align:center;
+  }
+  .history-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:9px 8px 9px 12px;
+    margin:0 6px 5px;
+    border-radius:11px;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:background .16s ease, border-color .16s ease;
+  }
+  .history-item:hover{background:rgba(220,20,60,.12)}
+  .history-item.active{background:rgba(220,20,60,.2);border-color:rgba(220,20,60,.42)}
+  .history-title{
+    flex:1;
+    min-width:0;
+    font-size:13.5px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#f4dde2;
+  }
+  .history-actions{display:flex;gap:2px;opacity:0;transition:opacity .16s ease}
+  .history-item:hover .history-actions,
+  .history-item.active .history-actions{opacity:1}
+  .mini-btn{
+    width:24px;height:24px;
+    display:grid;place-items:center;
+    border-radius:7px;
+    color:rgba(255,190,205,.75);
+    transition:background .15s ease,color .15s ease;
+  }
+  .mini-btn:hover{background:rgba(220,20,60,.28);color:#fff}
+  .mini-btn.pinned{color:#ff9fb4;background:rgba(220,20,60,.22)}
+  .sidebar-foot{
+    padding:12px 14px 16px;
+    border-top:1px solid rgba(220,20,60,.16);
+  }
+  .foot-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:10px 12px;
+    border-radius:11px;
+    font-size:13.5px;
+    color:#f0ccd4;
+    border:1px solid rgba(220,20,60,.22);
+    background:rgba(220,20,60,.08);
+    transition:background .16s ease;
+  }
+  .foot-btn:hover{background:rgba(220,20,60,.18)}
+
+  .main{
+    flex:1;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    overflow:hidden;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px 18px;
+    border-bottom:1px solid rgba(220,20,60,.16);
+    background:rgba(24,2,7,.55);
+    backdrop-filter:blur(12px);
+    z-index:10;
+  }
+  .icon-btn{
+    width:36px;height:36px;
+    flex:0 0 36px;
+    display:grid;
+    place-items:center;
+    border-radius:10px;
+    color:#ffc2cf;
+    border:1px solid rgba(220,20,60,.22);
+    background:rgba(220,20,60,.1);
+    transition:background .16s ease;
+  }
+  .icon-btn:hover{background:rgba(220,20,60,.24)}
+  .menu-btn{display:none}
+  .close-btn{display:none}
+  .topbar-title{
+    flex:1;
+    min-width:0;
+    font-size:14.5px;
+    font-weight:600;
+    color:#ffe3e9;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    letter-spacing:.2px;
+  }
+  .model-tag{
+    font-size:11px;
+    letter-spacing:.6px;
+    padding:5px 10px;
+    border-radius:999px;
+    color:#ffb9c8;
+    border:1px solid rgba(220,20,60,.3);
+    background:rgba(220,20,60,.12);
+    white-space:nowrap;
+  }
+
+  .chat-scroll{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:26px 22px 10px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(220,20,60,.5) transparent;
+  }
+  .chat-scroll::-webkit-scrollbar{width:9px}
+  .chat-scroll::-webkit-scrollbar-track{background:transparent}
+  .chat-scroll::-webkit-scrollbar-thumb{
+    background:rgba(220,20,60,.42);
+    border-radius:99px;
+    border:2px solid transparent;
+    background-clip:content-box;
+  }
+  .history-list::-webkit-scrollbar{width:8px}
+  .history-list::-webkit-scrollbar-thumb{
+    background:rgba(220,20,60,.35);
+    border-radius:99px;
+    border:2px solid transparent;
+    background-clip:content-box;
+  }
+
+  .messages{
+    max-width:880px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  .msg{display:flex;gap:12px;align-items:flex-start;animation:rise .28s ease both}
+  .msg.user{flex-direction:row-reverse}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  .avatar{
+    width:34px;height:34px;
+    flex:0 0 34px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.6px;
+  }
+  .msg.user .avatar{
+    background:linear-gradient(135deg,#dc143c,#8b0d24);
+    color:#fff;
+    box-shadow:0 6px 16px rgba(220,20,60,.4);
+  }
+  .msg.model .avatar{
+    background:rgba(220,20,60,.16);
+    border:1px solid rgba(220,20,60,.42);
+    color:#ffb3c2;
+  }
+  .bubble{
+    max-width:min(100%,730px);
+    padding:14px 17px;
+    border-radius:16px;
+    font-size:15px;
+    line-height:1.74;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+  .msg.user .bubble{
+    background:linear-gradient(135deg, rgba(220,20,60,.95), rgba(139,13,36,.95));
+    color:#fff;
+    border-top-right-radius:5px;
+    box-shadow:0 10px 26px rgba(0,0,0,.34);
+    font-family:Georgia,"Times New Roman",serif;
+    letter-spacing:.2px;
+  }
+  .msg.model .bubble{
+    background:rgba(28,3,9,.78);
+    border:1px solid rgba(220,20,60,.22);
+    border-top-left-radius:5px;
+    color:#f7e6ea;
+    box-shadow:0 10px 26px rgba(0,0,0,.28);
+  }
+  .bubble p{margin:0 0 10px}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble h1,.bubble h2,.bubble h3{
+    font-family:Georgia,"Times New Roman",serif;
+    color:#ffd6df;
+    margin:14px 0 8px;
+    line-height:1.35;
+  }
+  .bubble h1{font-size:21px}
+  .bubble h2{font-size:18px}
+  .bubble h3{font-size:16px}
+  .bubble h1:first-child,.bubble h2:first-child,.bubble h3:first-child{margin-top:0}
+  .bubble em{color:#ffc9d6;font-style:italic}
+  .bubble strong{color:#fff;font-weight:700}
+  .bubble code{
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    font-size:13px;
+    background:rgba(220,20,60,.18);
+    border:1px solid rgba(220,20,60,.24);
+    padding:2px 6px;
+    border-radius:6px;
+    color:#ffd9e1;
+  }
+  .bubble pre{
+    background:rgba(10,1,3,.85);
+    border:1px solid rgba(220,20,60,.28);
+    border-radius:12px;
+    padding:13px 15px;
+    overflow-x:auto;
+    margin:10px 0;
+  }
+  .bubble pre code{background:none;border:none;padding:0;color:#ffd0dc;font-size:13px;line-height:1.6}
+  .bubble blockquote{
+    border-left:3px solid var(--crimson);
+    padding:4px 0 4px 14px;
+    margin:10px 0;
+    color:#f0c3cd;
+    font-family:Georgia,"Times New Roman",serif;
+    font-style:italic;
+  }
+  .bubble li{margin:0 0 6px 20px;list-style:disc}
+  .bubble .gap{height:8px}
+  .msg.user .bubble code{background:rgba(0,0,0,.28);border-color:rgba(255,255,255,.2);color:#fff}
+  .msg.user .bubble pre{background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.2)}
+  .msg.user .bubble pre code{color:#fff}
+  .msg.user .bubble blockquote{border-color:rgba(255,255,255,.6);color:#ffe4ea}
+
+  .bubble.typing::after{
+    content:"";
+    display:inline-block;
+    width:8px;height:16px;
+    margin-left:3px;
+    vertical-align:-3px;
+    background:var(--crimson);
+    border-radius:2px;
+    animation:blink 1s steps(2,start) infinite;
+  }
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+  .empty-state{
+    max-width:640px;
+    margin:6vh auto 0;
+    text-align:center;
+    animation:rise .4s ease both;
+  }
+  .empty-mark{
+    font-size:40px;
+    color:var(--crimson);
+    text-shadow:0 0 34px rgba(220,20,60,.7);
+    margin-bottom:12px;
+  }
+  .empty-state h2{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:29px;
+    letter-spacing:.6px;
+    color:#ffe0e7;
+    margin-bottom:10px;
+  }
+  .empty-state p{
+    font-size:14.5px;
+    line-height:1.7;
+    color:var(--muted);
+    margin-bottom:26px;
+  }
+  .chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+  }
+  .chip{
+    padding:10px 15px;
+    border-radius:999px;
+    font-size:13px;
+    color:#f5cfd8;
+    border:1px solid rgba(220,20,60,.3);
+    background:rgba(220,20,60,.1);
+    transition:background .16s ease, transform .16s ease;
+  }
+  .chip:hover{background:rgba(220,20,60,.24);transform:translateY(-1px)}
+
+  .composer{
+    padding:12px 22px 20px;
+    background:linear-gradient(180deg, rgba(20,2,6,0), rgba(20,2,6,.72) 40%);
+  }
+  .composer-inner{
+    max-width:880px;
+    margin:0 auto;
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    padding:10px 10px 10px 16px;
+    border-radius:18px;
+    border:1px solid rgba(220,20,60,.3);
+    background:rgba(30,3,10,.82);
+    backdrop-filter:blur(12px);
+    box-shadow:0 14px 34px rgba(0,0,0,.4);
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  .composer-inner:focus-within{
+    border-color:rgba(220,20,60,.62);
+    box-shadow:0 14px 34px rgba(0,0,0,.45), 0 0 0 3px rgba(220,20,60,.14);
+  }
+  #input{
+    flex:1;
+    min-width:0;
+    background:transparent;
+    border:none;
+    outline:none;
+    resize:none;
+    font-size:15px;
+    line-height:1.6;
+    max-height:180px;
+    padding:7px 0;
+    color:var(--text);
+    scrollbar-width:thin;
+  }
+  #input::placeholder{color:rgba(217,167,179,.62)}
+  .send-btn{
+    width:42px;height:42px;
+    flex:0 0 42px;
+    border-radius:13px;
+    display:grid;
+    place-items:center;
+    background:linear-gradient(135deg,#dc143c,#8b0d24);
+    color:#fff;
+    box-shadow:0 8px 22px rgba(220,20,60,.35);
+    transition:transform .16s ease, opacity .16s ease;
+  }
+  .send-btn:hover{transform:translateY(-1px)}
+  .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .send-btn.stop{background:linear-gradient(135deg,#5a0512,#8b0d24)}
+
+  .scroll-fabs{
+    position:absolute;
+    right:20px;
+    bottom:128px;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    z-index:12;
+  }
+  .fab{
+    width:38px;height:38px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    font-size:15px;
+    color:#ffc2cf;
+    border:1px solid rgba(220,20,60,.42);
+    background:rgba(35,4,10,.88);
+    backdrop-filter:blur(8px);
+    box-shadow:0 8px 20px rgba(0,0,0,.4);
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(6px);
+    transition:opacity .2s ease, transform .2s ease, background .16s ease;
+  }
+  .fab.show{opacity:1;pointer-events:auto;transform:translateY(0)}
+  .fab:hover{background:rgba(220,20,60,.34)}
+
+  .scrim{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.55);
+    z-index:35;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  .scrim.show{opacity:1;pointer-events:auto}
+
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    z-index:80;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(8,0,2,.7);
+    backdrop-filter:blur(6px);
+  }
+  .modal-backdrop.open{display:flex}
+  .modal{
+    width:100%;
+    max-width:440px;
+    border-radius:18px;
+    padding:22px;
+    border:1px solid rgba(220,20,60,.34);
+    background:linear-gradient(180deg, rgba(44,5,13,.98), rgba(24,3,8,.98));
+    box-shadow:0 26px 70px rgba(0,0,0,.6);
+    animation:rise .25s ease both;
+  }
+  .modal h2{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:20px;
+    color:#ffe0e7;
+    margin-bottom:6px;
+  }
+  .modal p.hint{
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.6;
+    margin-bottom:16px;
+  }
+  .modal label{
+    display:block;
+    font-size:12px;
+    letter-spacing:.8px;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:14px 0 7px;
+  }
+  .modal input,.modal select{
+    width:100%;
+    padding:11px 13px;
+    border-radius:11px;
+    border:1px solid rgba(220,20,60,.3);
+    background:rgba(12,1,4,.72);
+    outline:none;
+    font-size:14px;
+    transition:border-color .18s ease;
+  }
+  .modal input:focus,.modal select:focus{border-color:rgba(220,20,60,.7)}
+  .modal select option{background:#21040a;color:#fbeef1}
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:22px;
+  }
+  .btn-ghost{
+    padding:10px 18px;
+    border-radius:11px;
+    font-size:13.5px;
+    color:#f0ccd4;
+    border:1px solid rgba(220,20,60,.28);
+    background:rgba(220,20,60,.08);
+    transition:background .16s ease;
+  }
+  .btn-ghost:hover{background:rgba(220,20,60,.2)}
+  .btn-solid{
+    padding:10px 20px;
+    border-radius:11px;
+    font-size:13.5px;
+    font-weight:600;
+    color:#fff;
+    background:linear-gradient(135deg,#dc143c,#8b0d24);
+    box-shadow:0 8px 20px rgba(220,20,60,.32);
+    transition:transform .16s ease;
+  }
+  .btn-solid:hover{transform:translateY(-1px)}
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:26px;
+    transform:translate(-50%,20px);
+    padding:11px 20px;
+    border-radius:12px;
+    font-size:13.5px;
+    color:#ffe3e9;
+    border:1px solid rgba(220,20,60,.42);
+    background:rgba(40,4,12,.96);
+    box-shadow:0 14px 34px rgba(0,0,0,.5);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .24s ease, transform .24s ease;
+    z-index:90;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width:860px){
+    .sidebar{
+      position:fixed;
+      top:0;bottom:0;left:0;
+      transform:translateX(-100%);
+      transition:transform .28s ease;
+      box-shadow:0 0 50px rgba(0,0,0,.65);
+    }
+    .sidebar.open{transform:translateX(0)}
+    .menu-btn{display:grid}
+    .close-btn{display:grid}
+    .chat-scroll{padding:20px 16px 8px}
+    .messages{padding-right:52px}
+    .composer{padding:10px 14px 16px}
+    .scroll-fabs{right:12px;bottom:118px}
+    .model-tag{display:none}
+  }
+  @media (min-width:861px){
+    .scrim{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="brand"><span class="brand-mark">❦</span><span>Noctis AI Forge</span></div>
+      <button class="icon-btn close-btn" id="closeSidebar" title="Close">✕</button>
+    </div>
+    <div class="sidebar-new">
+      <button class="new-chat" id="newChat"><span>＋</span><span>New Chat</span></button>
+    </div>
+    <div class="history-label">Chat History</div>
+    <div class="history-list" id="historyList"></div>
+    <div class="sidebar-foot">
+      <button class="foot-btn" id="openSettings"><span>⚙</span><span>API Settings</span></button>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menuBtn" title="Menu">☰</button>
+      <div class="topbar-title" id="chatTitle">New Chat</div>
+      <div class="model-tag" id="modelTag">gemini-2.0-flash</div>
+      <button class="icon-btn" id="topSettings" title="Settings">⚙</button>
+    </header>
+
+    <div class="chat-scroll" id="chatScroll">
+      <div class="messages" id="messages"></div>
+    </div>
+
+    <div class="scroll-fabs">
+      <button class="fab" id="scrollTopBtn" title="Go to top">↑</button>
+      <button class="fab" id="scrollBottomBtn" title="Go to bottom">↓</button>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <textarea id="input" rows="1" placeholder="Ask for a poem, a scene, a letter, a story…"></textarea>
+        <button class="send-btn" id="sendBtn" title="Send">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2>Gemini Settings</h2>
+    <p class="hint">Your key is stored only in this browser's local storage and is sent directly to Google's Gemini API.</p>
+    <label for="apiKeyInput">API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="AIza…" autocomplete="off" spellcheck="false">
+    <label for="modelSelect">Model</label>
+    <select id="modelSelect">
+      <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+      <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+      <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+      <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+      <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cancelSettings">Cancel</button>
+      <button class="btn-solid" id="saveSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CHATS_KEY = "crimsonQuill.chats.v1";
+const API_KEY_STORE = "crimsonQuill.apiKey";
+const MODEL_STORE = "crimsonQuill.model";
+const DEFAULT_MODEL = "gemini-2.0-flash";
+
+const SYSTEM_PROMPT = [
+  "You are Noctis AI Forge, a master literary artist and writing companion.",
+  "You compose poetry, prose, drama, letters, essays, and every form of literary art with craft, rhythm, imagery, and emotional precision.",
+  "When the user requests a literary work, deliver the complete piece in polished form, using line breaks and structure appropriate to the form.",
+  "Match the requested tone, era, style, voice, and length. Use vivid sensory detail and deliberate diction.",
+  "You may add a brief, elegant note after the piece only when it adds value. Never explain your process unless asked.",
+  "Always write in the language the user writes in."
+].join(" ");
+
+const PIN_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M14.6 2.3l7.1 7.1-2.1 1-3.6 3.6-.6 3.9-2.4-2.4-4.6 4.6-1.2-1.2 4.6-4.6-2.4-2.4 3.9-.6 3.6-3.6z"/></svg>';
+const TRASH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 12.2a1 1 0 01-1 .8H8a1 1 0 01-1-.8L6 9zm3 2v9h2v-9H9zm4 0v9h2v-9h-2z"/></svg>';
+
+const sidebarEl = document.getElementById("sidebar");
+const scrimEl = document.getElementById("scrim");
+const historyListEl = document.getElementById("historyList");
+const messagesEl = document.getElementById("messages");
+const chatScrollEl = document.getElementById("chatScroll");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const chatTitleEl = document.getElementById("chatTitle");
+const modelTagEl = document.getElementById("modelTag");
+const scrollTopBtn = document.getElementById("scrollTopBtn");
+const scrollBottomBtn = document.getElementById("scrollBottomBtn");
+const modalBackdrop = document.getElementById("modalBackdrop");
+const apiKeyInput = document.getElementById("apiKeyInput");
+const modelSelect = document.getElementById("modelSelect");
+const toastEl = document.getElementById("toast");
+
+let chats = [];
+let activeId = null;
+let streaming = false;
+let controller = null;
+let autoScroll = true;
+let toastTimer = null;
+
+function uid() {
+  return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(CHATS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    chats = Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    chats = [];
+  }
+  chats = chats.filter(c => c && typeof c === "object");
+  chats.forEach(c => {
+    if (!c.id) c.id = uid();
+    if (!Array.isArray(c.messages)) c.messages = [];
+    c.pinned = !!c.pinned;
+    if (typeof c.updatedAt !== "number") c.updatedAt = Date.now();
+    if (typeof c.title !== "string" || !c.title) c.title = "Untitled";
+  });
+  const storedModel = localStorage.getItem(MODEL_STORE) || DEFAULT_MODEL;
+  modelTagEl.textContent = storedModel;
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
+  } catch (e) {
+    toast("Storage limit reached. Delete some chats.");
+  }
+}
+
+function getApiKey() {
+  return (localStorage.getItem(API_KEY_STORE) || "").trim();
+}
+
+function getModel() {
+  return localStorage.getItem(MODEL_STORE) || DEFAULT_MODEL;
+}
+
+function getActiveChat() {
+  return chats.find(c => c.id === activeId) || null;
+}
+
+function sortedChats() {
+  return [...chats].sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (b.updatedAt - a.updatedAt));
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
+
+function renderMarkdown(source) {
+  const lines = String(source || "").split("\n");
+  let html = "";
+  let inCode = false;
+  let codeBuffer = [];
+
+  for (const rawLine of lines) {
+    if (rawLine.trim().startsWith("```")) {
+      if (inCode) {
+        html += "<pre><code>" + escapeHtml(codeBuffer.join("\n")) + "</code></pre>";
+        codeBuffer = [];
+        inCode = false;
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) {
+      codeBuffer.push(rawLine);
+      continue;
+    }
+    let line = escapeHtml(rawLine);
+    line = line.replace(/`([^`]+)`/g, "<code>$1</code>");
+    line = line.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    line = line.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    line = line.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+
+    if (/^###\s/.test(line)) html += "<h3>" + line.slice(4) + "</h3>";
+    else if (/^##\s/.test(line)) html += "<h2>" + line.slice(3) + "</h2>";
+    else if (/^#\s/.test(line)) html += "<h1>" + line.slice(2) + "</h1>";
+    else if (/^&gt;\s?/.test(line)) html += "<blockquote>" + line.replace(/^&gt;\s?/, "") + "</blockquote>";
+    else if (/^[-*]\s/.test(line)) html += "<li>" + line.slice(2) + "</li>";
+    else if (line.trim() === "") html += '<div class="gap"></div>';
+    else html += "<p>" + line + "</p>";
+  }
+  if (inCode && codeBuffer.length) {
+    html += "<pre><code>" + escapeHtml(codeBuffer.join("\n")) + "</code></pre>";
+  }
+  return html;
+}
+
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+
+function buildMessage(role, text) {
+  const wrap = document.createElement("div");
+  wrap.className = "msg " + (role === "user" ? "user" : "model");
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = role === "user" ? "YOU" : "CQ";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.innerHTML = renderMarkdown(text);
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  return wrap;
+}
+
+function emptyState() {
+  const box = document.createElement("div");
+  box.className = "empty-state";
+  box.innerHTML =
+    '<div class="empty-mark">❦</div>' +
+    "<h2>Crimson Quill</h2>" +
+    "<p>Ask for a poem, a scene, a letter, a story — anything literary. The ink is ready.</p>" +
+    '<div class="chips">' +
+    '<button class="chip">Write a sonnet about a lighthouse in a storm</button>' +
+    '<button class="chip">Compose a gothic opening paragraph for a novel</button>' +
+    '<button class="chip">Write a farewell letter in Victorian prose</button>' +
+    '<button class="chip">Draft a tragic monologue for the stage</button>' +
+    "</div>";
+  box.querySelectorAll(".chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      inputEl.value = btn.textContent;
+      autoResize();
+      send();
+    });
+  });
+  return box;
+}
+
+function renderMessages() {
+  messagesEl.innerHTML = "";
+  const chat = getActiveChat();
+  if (!chat || chat.messages.length === 0) {
+    messagesEl.appendChild(emptyState());
+    return;
+  }
+  chat.messages.forEach(m => {
+    messagesEl.appendChild(buildMessage(m.role === "user" ? "user" : "model", m.text));
+  });
+  requestAnimationFrame(() => {
+    chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+  });
+}
+
+function renderHistory() {
+  historyListEl.innerHTML = "";
+  const list = sortedChats();
+  if (!list.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-history";
+    empty.textContent = "No conversations yet";
+    historyListEl.appendChild(empty);
+    return;
+  }
+
+  list.forEach(chat => {
+    const item = document.createElement("div");
+    item.className = "history-item" + (chat.id === activeId ? " active" : "");
+
+    const title = document.createElement("div");
+    title.className = "history-title";
+    title.textContent = chat.title || "Untitled";
+
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+
+    const pinBtn = document.createElement("button");
+    pinBtn.className = "mini-btn" + (chat.pinned ? " pinned" : "");
+    pinBtn.title = chat.pinned ? "Unpin chat" : "Pin chat";
+    pinBtn.innerHTML = PIN_SVG;
+    pinBtn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      chat.pinned = !chat.pinned;
+      saveState();
+      renderHistory();
+    });
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "mini-btn";
+    delBtn.title = "Delete chat";
+    delBtn.innerHTML = TRASH_SVG;
+    delBtn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      deleteChat(chat.id);
+    });
+
+    actions.appendChild(pinBtn);
+    actions.appendChild(delBtn);
+    item.appendChild(title);
+    item.appendChild(actions);
+    item.addEventListener("click", () => selectChat(chat.id));
+    historyListEl.appendChild(item);
+  });
+}
+
+function updateTitle() {
+  const chat = getActiveChat();
+  chatTitleEl.textContent = chat ? (chat.title || "Untitled") : "New Chat";
+  modelTagEl.textContent = getModel();
+}
+
+function selectChat(id) {
+  activeId = id;
+  renderHistory();
+  renderMessages();
+  updateTitle();
+  closeSidebar();
+}
+
+function createChat() {
+  const chat = {
+    id: uid(),
+    title: "New Chat",
+    messages: [],
+    pinned: false,
+    updatedAt: Date.now()
+  };
+  chats.unshift(chat);
+  activeId = chat.id;
+  saveState();
+  renderHistory();
+  renderMessages();
+  updateTitle();
+  return chat;
+}
+
+function deleteChat(id) {
+  const index = chats.findIndex(c => c.id === id);
+  if (index < 0) return;
+  chats.splice(index, 1);
+  if (activeId === id) {
+    const remaining = sortedChats();
+    activeId = remaining.length ? remaining[0].id : null;
+  }
+  saveState();
+  renderHistory();
+  renderMessages();
+  updateTitle();
+}
+
+function autoResize() {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + "px";
+}
+
+function setComposerState() {
+  if (streaming) {
+    sendBtn.classList.add("stop");
+    sendBtn.title = "Stop generating";
+    sendBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+  } else {
+    sendBtn.classList.remove("stop");
+    sendBtn.title = "Send";
+    sendBtn.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z"/></svg>';
+  }
+}
+
+async function streamGemini(chat, onChunk) {
+  const apiKey = getApiKey();
+  const model = getModel();
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+    encodeURIComponent(model) +
+    ":streamGenerateContent?alt=sse&key=" +
+    encodeURIComponent(apiKey);
+
+  const contents = chat.messages
+    .filter(m => m.text && m.text.length)
+    .map(m => ({
+      role: m.role === "user" ? "user" : "model",
+      parts: [{ text: m.text }]
+    }));
+
+  const body = {
+    contents: contents,
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    generationConfig: {
+      temperature: 1,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 8192
+    },
+    safetySettings: []
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: controller.signal
+  });
+
+  if (!response.ok) {
+    let message = "Request failed (" + response.status + ")";
+    try {
+      const text = await response.text();
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.error && parsed.error.message) message = parsed.error.message;
+    } catch (e) {}
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
+
+    let newlineIndex;
+    while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      let json;
+      try {
+        json = JSON.parse(payload);
+      } catch (e) {
+        continue;
+      }
+      const candidates = json.candidates || [];
+      if (!candidates.length) continue;
+      const parts = (candidates[0].content && candidates[0].content.parts) || [];
+      for (const part of parts) {
+        if (part && typeof part.text === "string" && part.text.length) {
+          onChunk(part.text);
+        }
+      }
+    }
+  }
+}
+
+async function send() {
+  if (streaming) return;
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  if (!getApiKey()) {
+    openSettings();
+    toast("Add your Gemini API key first");
+    return;
+  }
+
+  let chat = getActiveChat();
+  if (!chat) chat = createChat();
+
+  if (chat.messages.length === 0) {
+    chat.title = text.length > 48 ? text.slice(0, 48).trim() + "…" : text;
+  }
+
+  chat.messages.push({ role: "user", text: text });
+  chat.updatedAt = Date.now();
+  saveState();
+
+  inputEl.value = "";
+  autoResize();
+
+  renderMessages();
+  renderHistory();
+  updateTitle();
+
+  streaming = true;
+  setComposerState();
+  controller = new AbortController();
+
+  const modelMessage = { role: "model", text: "" };
+  chat.messages.push(modelMessage);
+
+  const msgEl = buildMessage("model", "");
+  const bubble = msgEl.querySelector(".bubble");
+  bubble.classList.add("typing");
+  messagesEl.appendChild(msgEl);
+  chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+
+  try {
+    await streamGemini(chat, chunk => {
+      modelMessage.text += chunk;
+      bubble.innerHTML = renderMarkdown(modelMessage.text);
+      if (autoScroll) chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+    });
+    if (!modelMessage.text.trim()) {
+      modelMessage.text = "The quill produced no ink. Please try again.";
+    }
+    bubble.innerHTML = renderMarkdown(modelMessage.text);
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      modelMessage.text += modelMessage.text ? "\n\n*[generation stopped]*" : "*[generation stopped]*";
+    } else {
+      modelMessage.text = "**Error:** " + (err && err.message ? err.message : "Unknown error");
+    }
+    bubble.innerHTML = renderMarkdown(modelMessage.text);
+  } finally {
+    bubble.classList.remove("typing");
+    streaming = false;
+    controller = null;
+    chat.updatedAt = Date.now();
+    saveState();
+    renderHistory();
+    setComposerState();
+    if (autoScroll) chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
+  }
+}
+
+function openSettings() {
+  apiKeyInput.value = getApiKey();
+  modelSelect.value = getModel();
+  modalBackdrop.classList.add("open");
+  setTimeout(() => apiKeyInput.focus(), 60);
+}
+
+function closeSettings() {
+  modalBackdrop.classList.remove("open");
+}
+
+function openSidebar() {
+  sidebarEl.classList.add("open");
+  scrimEl.classList.add("show");
+}
+
+function closeSidebar() {
+  sidebarEl.classList.remove("open");
+  scrimEl.classList.remove("show");
+}
+
+function updateScrollButtons() {
+  const nearBottom = chatScrollEl.scrollTop + chatScrollEl.clientHeight >= chatScrollEl.scrollHeight - 80;
+  autoScroll = nearBottom;
+  scrollBottomBtn.classList.toggle("show", !nearBottom && chatScrollEl.scrollHeight > chatScrollEl.clientHeight + 40);
+  scrollTopBtn.classList.toggle("show", chatScrollEl.scrollTop > 240);
+}
+
+sendBtn.addEventListener("click", () => {
+  if (streaming) {
+    if (controller) controller.abort();
+  } else {
+    send();
+  }
+});
+
+inputEl.addEventListener("input", autoResize);
+inputEl.addEventListener("keydown", ev => {
+  if (ev.key === "Enter" && !ev.shiftKey) {
+    ev.preventDefault();
+    if (!streaming) send();
+  }
+});
+
+chatScrollEl.addEventListener("scroll", updateScrollButtons, { passive: true });
+
+scrollTopBtn.addEventListener("click", () => {
+  chatScrollEl.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+scrollBottomBtn.addEventListener("click", () => {
+  chatScrollEl.scrollTo({ top: chatScrollEl.scrollHeight, behavior: "smooth" });
+});
+
+document.getElementById("newChat").addEventListener("click", () => {
+  createChat();
+  closeSidebar();
+  inputEl.focus();
+});
+
+document.getElementById("menuBtn").addEventListener("click", openSidebar);
+document.getElementById("closeSidebar").addEventListener("click", closeSidebar);
+scrimEl.addEventListener("click", closeSidebar);
+
+document.getElementById("openSettings").addEventListener("click", () => {
+  closeSidebar();
+  openSettings();
+});
+document.getElementById("topSettings").addEventListener("click", openSettings);
+
+document.getElementById("cancelSettings").addEventListener("click", closeSettings);
+
+document.getElementById("saveSettings").addEventListener("click", () => {
+  const key = apiKeyInput.value.trim();
+  const model = modelSelect.value;
+  if (!key) {
+    toast("Please enter a valid API key");
+    return;
+  }
+  localStorage.setItem(API_KEY_STORE, key);
+  localStorage.setItem(MODEL_STORE, model);
+  modelTagEl.textContent = model;
+  closeSettings();
+  toast("Settings saved");
+});
+
+modalBackdrop.addEventListener("click", ev => {
+  if (ev.target === modalBackdrop) closeSettings();
+});
+
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape") {
+    if (modalBackdrop.classList.contains("open")) closeSettings();
+    else closeSidebar();
+  }
+});
+
+function init() {
+  loadState();
+  renderHistory();
+
+  if (chats.length) {
+    const first = sortedChats()[0];
+    activeId = first.id;
+    renderHistory();
+    renderMessages();
+    updateTitle();
+  } else {
+    activeId = null;
+    renderMessages();
+    updateTitle();
+  }
+
+  setComposerState();
+  autoResize();
+  updateScrollButtons();
+  window.addEventListener("resize", updateScrollButtons);
+
+  if (!getApiKey()) {
+    setTimeout(() => {
+      openSettings();
+      toast("Add your Gemini API key to begin");
+    }, 400);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
