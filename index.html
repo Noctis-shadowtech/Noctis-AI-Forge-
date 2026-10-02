@@ -646,7 +646,7 @@
     <header class="topbar">
       <button class="icon-btn menu-btn" id="menuBtn" title="Menu">☰</button>
       <div class="topbar-title" id="chatTitle">New Chat</div>
-      <div class="model-tag" id="modelTag">gemini-2.0-flash</div>
+      <div class="model-tag" id="modelTag">deepseek/deepseek-r1:free</div>
       <button class="icon-btn" id="topSettings" title="Settings">⚙</button>
     </header>
 
@@ -672,17 +672,21 @@
 
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal">
-    <h2>Gemini Settings</h2>
-    <p class="hint">Your key is stored only in this browser's local storage and is sent directly to Google's Gemini API.</p>
+    <h2>OpenRouter Settings</h2>
+    <p class="hint">Get a free key at openrouter.ai/keys. Your key is stored only in this browser's local storage.</p>
     <label for="apiKeyInput">API Key</label>
-    <input type="password" id="apiKeyInput" placeholder="AQ…" autocomplete="off" spellcheck="false">
+    <input type="password" id="apiKeyInput" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false">
     <label for="modelSelect">Model</label>
     <select id="modelSelect">
-      <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-      <option value="gemini-2.5-flash">gemini-2.5-flash</option>
-      <option value="gemini-2.5-pro">gemini-2.5-pro</option>
-      <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-      <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+      <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1:free</option>
+      <option value="deepseek/deepseek-chat-v3-0324:free">deepseek/deepseek-chat-v3-0324:free</option>
+      <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct:free</option>
+      <option value="meta-llama/llama-3.1-8b-instruct:free">meta-llama/llama-3.1-8b-instruct:free</option>
+      <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp:free</option>
+      <option value="google/gemma-2-9b-it:free">google/gemma-2-9b-it:free</option>
+      <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
+      <option value="qwen/qwen-2.5-72b-instruct:free">qwen/qwen-2.5-72b-instruct:free</option>
+      <option value="nvidia/nemotron-3.5-lightning:free">nvidia/nemotron-3.5-lightning:free</option>
     </select>
     <div class="modal-actions">
       <button class="btn-ghost" id="cancelSettings">Cancel</button>
@@ -694,11 +698,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const CHATS_KEY = "nocticsForge.chats.v1";
-const API_KEY_STORE = "nocticsForge.apiKey.v1";
-const MODEL_STORE = "nocticsForge.model.v1";
-const DEFAULT_MODEL = "gemini-2.0-flash";
-const DEFAULT_API_KEY = "AQ.Ab8RN6LFx6L9Q7j10LVncxudF827wwlpk6XKDhnXlbtFtfzPHw";
+const CHATS_KEY = "nocticsForge.chats.v2";
+const API_KEY_STORE = "nocticsForge.apiKey.v2";
+const MODEL_STORE = "nocticsForge.model.v2";
+const DEFAULT_MODEL = "deepseek/deepseek-r1:free";
+const DEFAULT_API_KEY = "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";
 
 const SYSTEM_PROMPT = [
   "You are Noctics Forge, a master literary artist and writing companion.",
@@ -1010,35 +1014,16 @@ function setComposerState() {
   }
 }
 
-function buildContents(chat) {
-  const contents = [];
+function buildMessages(chat) {
+  const messages = [{ role: "system", content: SYSTEM_PROMPT }];
   for (const m of chat.messages) {
     if (!m || typeof m.text !== "string" || m.text.length === 0) continue;
-    const role = m.role === "user" ? "user" : "model";
-    contents.push({ role: role, parts: [{ text: m.text }] });
+    messages.push({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.text
+    });
   }
-  while (contents.length && contents[0].role !== "user") contents.shift();
-  const merged = [];
-  for (const c of contents) {
-    if (merged.length && merged[merged.length - 1].role === c.role) {
-      merged[merged.length - 1].parts[0].text += "\n\n" + c.parts[0].text;
-    } else {
-      merged.push({ role: c.role, parts: [{ text: c.parts[0].text }] });
-    }
-  }
-  return merged;
-}
-
-function buildBody(chat) {
-  return {
-    contents: buildContents(chat),
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    generationConfig: {
-      temperature: 1,
-      topP: 0.95,
-      maxOutputTokens: 8192
-    }
-  };
+  return messages;
 }
 
 async function parseError(response) {
@@ -1048,6 +1033,7 @@ async function parseError(response) {
     try {
       const parsed = JSON.parse(text);
       if (parsed && parsed.error && parsed.error.message) message = parsed.error.message;
+      else if (parsed && parsed.error && typeof parsed.error === "string") message = parsed.error;
     } catch (e) {
       if (text) message = text.slice(0, 240);
     }
@@ -1055,18 +1041,28 @@ async function parseError(response) {
   return message;
 }
 
-async function streamGemini(chat, onChunk) {
+async function streamOpenRouter(chat, onChunk) {
   const apiKey = getApiKey();
   const model = getModel();
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
-    encodeURIComponent(model) +
-    ":streamGenerateContent?alt=sse&key=" +
-    encodeURIComponent(apiKey);
+  const url = "https://openrouter.ai/api/v1/chat/completions";
+
+  const body = {
+    model: model,
+    messages: buildMessages(chat),
+    stream: true,
+    temperature: 1,
+    top_p: 0.95
+  };
 
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildBody(chat)),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey,
+      "HTTP-Referer": window.location.origin || "https://noctics-forge.vercel.app",
+      "X-Title": "Noctics Forge"
+    },
+    body: JSON.stringify(body),
     signal: controller.signal
   });
 
@@ -1100,13 +1096,11 @@ async function streamGemini(chat, onChunk) {
       } catch (e) {
         continue;
       }
-      const candidates = json.candidates || [];
-      if (!candidates.length) continue;
-      const parts = (candidates[0].content && candidates[0].content.parts) || [];
-      for (const part of parts) {
-        if (part && typeof part.text === "string" && part.text.length) {
+      if (json.choices && json.choices[0]) {
+        const delta = json.choices[0].delta;
+        if (delta && typeof delta.content === "string" && delta.content.length) {
           produced = true;
-          onChunk(part.text);
+          onChunk(delta.content);
         }
       }
     }
@@ -1114,18 +1108,27 @@ async function streamGemini(chat, onChunk) {
   return produced;
 }
 
-async function generateGemini(chat) {
+async function generateOpenRouter(chat) {
   const apiKey = getApiKey();
   const model = getModel();
-  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
-    encodeURIComponent(model) +
-    ":generateContent?key=" +
-    encodeURIComponent(apiKey);
+  const url = "https://openrouter.ai/api/v1/chat/completions";
+
+  const body = {
+    model: model,
+    messages: buildMessages(chat),
+    temperature: 1,
+    top_p: 0.95
+  };
 
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildBody(chat)),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey,
+      "HTTP-Referer": window.location.origin || "https://noctics-forge.vercel.app",
+      "X-Title": "Noctics Forge"
+    },
+    body: JSON.stringify(body),
     signal: controller.signal
   });
 
@@ -1134,15 +1137,10 @@ async function generateGemini(chat) {
   }
 
   const json = await response.json();
-  const candidates = json.candidates || [];
-  if (!candidates.length) throw new Error("No response from Gemini.");
-  const parts = (candidates[0].content && candidates[0].content.parts) || [];
-  let text = "";
-  for (const part of parts) {
-    if (part && typeof part.text === "string") text += part.text;
+  if (json.choices && json.choices[0] && json.choices[0].message) {
+    return json.choices[0].message.content || "";
   }
-  if (!text) throw new Error("Empty response from Gemini.");
-  return text;
+  throw new Error("Empty response from OpenRouter.");
 }
 
 async function send() {
@@ -1150,9 +1148,9 @@ async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
 
-  if (!getApiKey()) {
+  if (!getApiKey() || getApiKey() === "YOUR_OPENROUTER_KEY_HERE") {
     openSettings();
-    toast("Add your Gemini API key first");
+    toast("Add your OpenRouter API key first");
     return;
   }
 
@@ -1188,7 +1186,7 @@ async function send() {
   chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
 
   try {
-    const produced = await streamGemini(chat, chunk => {
+    const produced = await streamOpenRouter(chat, chunk => {
       modelMessage.text += chunk;
       bubble.innerHTML = renderMarkdown(modelMessage.text);
       if (autoScroll) chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
@@ -1196,7 +1194,7 @@ async function send() {
 
     if (!produced || !modelMessage.text.trim()) {
       try {
-        const full = await generateGemini(chat);
+        const full = await generateOpenRouter(chat);
         modelMessage.text = full;
       } catch (fallbackErr) {
         if (fallbackErr && fallbackErr.name === "AbortError") {
@@ -1214,7 +1212,7 @@ async function send() {
       bubble.innerHTML = renderMarkdown(modelMessage.text);
     } else {
       try {
-        const full = await generateGemini(chat);
+        const full = await generateOpenRouter(chat);
         modelMessage.text = full;
         bubble.innerHTML = renderMarkdown(modelMessage.text);
       } catch (fallbackErr) {
@@ -1239,8 +1237,11 @@ async function send() {
 }
 
 function openSettings() {
-  apiKeyInput.value = getApiKey();
+  apiKeyInput.value = getApiKey() === "YOUR_OPENROUTER_KEY_HERE" ? "" : getApiKey();
   modelSelect.value = getModel();
+  if (!modelSelect.value) {
+    modelSelect.value = DEFAULT_MODEL;
+  }
   modalBackdrop.classList.add("open");
   setTimeout(() => apiKeyInput.focus(), 60);
 }
@@ -1355,9 +1356,16 @@ function init() {
   autoResize();
   updateScrollButtons();
   window.addEventListener("resize", updateScrollButtons);
+
+  if (!localStorage.getItem(API_KEY_STORE)) {
+    setTimeout(() => {
+      openSettings();
+      toast("Paste your OpenRouter key to begin");
+    }, 400);
+  }
 }
 
 init();
 </script>
 </body>
-</html>
+  </html>
